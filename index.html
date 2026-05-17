@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FuelVault — Fuel Bill Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛽</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
+<style>
+:root {
+  --bg:       #08080f;
+  --s1:       #0f0f1a;
+  --s2:       #161625;
+  --s3:       #1e1e30;
+  --border:   #26263d;
+  --border2:  #333350;
+  --accent:   #f5c842;
+  --accent2:  #ff6535;
+  --text:     #eeeef5;
+  --muted:    #606090;
+  --muted2:   #9090b8;
+  --green:    #3dd68c;
+  --red:      #ff4466;
+  --fh:       'Syne', sans-serif;
+  --fm:       'DM Mono', monospace;
+  --fb:       'DM Sans', sans-serif;
+  --r:        14px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--fb);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SETUP SCREEN ── */
+#setup-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.bg-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+.glow1 { width:500px;height:500px;background:var(--accent);top:-150px;right:-150px; }
+.glow2 { width:400px;height:400px;background:var(--accent2);bottom:-100px;left:-100px; }
+
+.setup-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 40px 32px;
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+.app-logo {
+  width: 68px; height: 68px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+  margin: 0 auto 22px;
+  box-shadow: 0 12px 40px rgba(245,200,66,0.25);
+}
+.setup-card h1 {
+  font-family: var(--fh);
+  font-size: 26px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 6px;
+}
+.setup-card .tagline {
+  text-align: center;
+  color: var(--muted2);
+  font-size: 14px;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+.features {
+  list-style: none;
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.features li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted2);
+}
+.feat-icon {
+  width: 30px; height: 30px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* CONFIG SECTION */
+.config-section {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.config-section h3 {
+  font-family: var(--fh);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.config-section p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.config-section a { color: var(--accent); text-decoration: none; }
+.config-section a:hover { text-decoration: underline; }
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+.form-input, .form-select {
+  width: 100%;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--text);
+  font-family: var(--fb);
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+.form-input:focus, .form-select:focus { border-color: var(--accent); }
+.form-select option { background: var(--s1); }
+.form-input::placeholder { color: var(--muted); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--fb);
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-decoration: none;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-primary:active:not(:disabled) { transform: translateY(0); }
+.btn-secondary {
+  background: var(--s2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-danger {
+  background: rgba(255,68,102,0.12);
+  color: var(--red);
+  border: 1px solid rgba(255,68,102,0.25);
+}
+.btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 9px; }
+.btn-block { width: 100%; }
+.btn-google {
+  background: #fff;
+  color: #1f1f1f;
+  width: 100%;
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.btn-google:hover { box-shadow: 0 6px 24px rgba(255,255,255,0.12); transform: translateY(-1px); }
+
+/* ── APP SHELL ── */
+#app { display: none; flex-direction: column; min-height: 100vh; }
+
+.app-header {
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  height: 56px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--fh);
+  font-weight: 700;
+  font-size: 17px;
+}
+.header-logo-icon {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.header-right { display: flex; align-items: center; gap: 10px; }
+.drive-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--muted2);
+}
+.drive-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: background 0.3s;
+}
+.drive-dot.ok { background: var(--green); }
+.drive-dot.err { background: var(--red); }
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  background: var(--s2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+}
+.avatar img { width:100%;height:100%;object-fit:cover; }
+.user-menu {
+  position: absolute;
+  top: 44px; right: 0;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: 13px;
+  padding: 6px;
+  min-width: 172px;
+  display: none;
+  z-index: 300;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+.user-menu.open { display: block; }
+.menu-item {
+  padding: 9px 13px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s;
+}
+.menu-item:hover { background: var(--s2); }
+.menu-item.danger { color: var(--red); }
+.menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── NAV ── */
+.nav-bar {
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-bar::-webkit-scrollbar { display: none; }
+.nav-item {
+  padding: 13px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.nav-item:hover { color: var(--text); }
+.nav-item.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── CONTENT ── */
+.content { flex: 1; padding: 18px 16px 100px; max-width: 640px; margin: 0 auto; width: 100%; }
+
+/* ── STAT CARDS ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.stat-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+}
+.stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 6px; }
+.stat-val { font-family: var(--fh); font-size: 28px; font-weight: 800; line-height: 1; }
+.stat-val.y { color: var(--accent); }
+.stat-val.g { color: var(--green); }
+.stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── SECTION ── */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-title { font-family: var(--fh); font-size: 15px; font-weight: 700; }
+.section-link { font-size: 12px; color: var(--accent); cursor: pointer; }
+
+/* ── BILL CARD ── */
+.bill-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 9px;
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.18s;
+}
+.bill-card:hover { border-color: var(--border2); transform: translateX(2px); }
+.bill-card:active { transform: scale(0.99); }
+.bill-thumb {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  background: var(--s2);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.bill-thumb img { width:100%;height:100%;object-fit:cover; }
+.bill-body { flex: 1; min-width: 0; }
+.bill-num {
+  font-family: var(--fm);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.bill-meta { font-size: 12px; color: var(--muted2); display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--s2);
+  color: var(--muted);
+  flex-shrink: 0;
+  align-self: center;
+}
+.badge.g { background: rgba(61,214,140,0.12); color: var(--green); }
+.badge.y { background: rgba(245,200,66,0.12); color: var(--accent); }
+
+/* ── VEHICLE CARD ── */
+.vehicle-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.veh-icon {
+  width: 44px; height: 44px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.veh-info { flex: 1; }
+.veh-name { font-family: var(--fh); font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.veh-plate {
+  font-family: var(--fm);
+  font-size: 12px;
+  color: var(--accent);
+  background: rgba(245,200,66,0.08);
+  border: 1px solid rgba(245,200,66,0.2);
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  letter-spacing: 1px;
+}
+.veh-stat { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.veh-actions { display: flex; gap: 7px; }
+.icon-btn {
+  width: 32px; height: 32px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.18s;
+}
+.icon-btn:hover { border-color: var(--border2); }
+.icon-btn.del:hover { border-color: var(--red); }
+
+/* ── EXPORT CARDS ── */
+.export-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px;
+  margin-bottom: 12px;
+}
+.export-card h3 { font-family: var(--fh); font-size: 15px; font-weight: 700; margin-bottom: 5px; }
+.export-card p { font-size: 13px; color: var(--muted2); margin-bottom: 14px; line-height: 1.6; }
+.export-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── FAB ── */
+.fab {
+  position: fixed;
+  bottom: 24px; right: 20px;
+  width: 62px; height: 62px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 19px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  cursor: pointer;
+  z-index: 150;
+  box-shadow: 0 8px 32px rgba(245,200,66,0.35);
+  transition: transform 0.2s, box-shadow 0.2s;
+  color: #000;
+}
+.fab:hover { transform: scale(1.06); box-shadow: 0 12px 40px rgba(245,200,66,0.45); }
+.fab:active { transform: scale(0.96); }
+.fab-label {
+  position: fixed;
+  bottom: 32px; right: 92px;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 149;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: all 0.2s;
+}
+.fab:hover + .fab-label { opacity: 1; transform: translateX(0); }
+
+/* ── MODALS ── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 400;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+.overlay.open { display: flex; }
+.overlay.center { align-items: center; padding: 20px; }
+.sheet {
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: 22px 22px 0 0;
+  padding: 24px 20px 36px;
+  width: 100%;
+  max-width: 580px;
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: up 0.28s ease;
+}
+.overlay.center .sheet { border-radius: 22px; }
+@keyframes up { from { transform: translateY(36px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.sheet-handle { width: 38px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 18px; }
+.sheet-title { font-family: var(--fh); font-size: 19px; font-weight: 700; margin-bottom: 18px; }
+
+/* ── CAMERA ── */
+.cam-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+#cam-video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+#cam-canvas { display: none; }
+.cam-corners { position: absolute; inset: 0; pointer-events: none; }
+.cam-corners::before, .cam-corners::after {
+  content: '';
+  position: absolute;
+  width: 22px; height: 22px;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.cam-corners::before { top: 10px; left: 10px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.cam-corners::after { top: 10px; right: 10px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.cam-corners2::before { bottom: 10px; left: 10px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.cam-corners2::after { bottom: 10px; right: 10px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+.cam-corners2 { position: absolute; inset: 0; pointer-events: none; }
+.cam-corners2::before, .cam-corners2::after {
+  content: '';
+  position: absolute;
+  width: 22px; height: 22px;
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+/* Processing overlay */
+.proc-overlay {
+  position: absolute; inset: 0;
+  background: rgba(8,8,15,0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: 14px;
+}
+.proc-overlay.show { display: flex; }
+.spinner {
+  width: 42px; height: 42px;
+  border: 3px solid rgba(245,200,66,0.2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.proc-text { font-size: 13px; color: var(--accent); font-weight: 500; }
+
+/* Scan result */
+.scan-result {
+  background: var(--s2);
+  border: 1px solid var(--border2);
+  border-radius: 13px;
+  padding: 16px;
+  display: none;
+  margin-top: 14px;
+}
+.scan-result.show { display: block; }
+.result-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 12px; }
+.cam-actions { display: flex; gap: 9px; margin-bottom: 0; }
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.filter-bar::-webkit-scrollbar { display: none; }
+.chip {
+  padding: 5px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--s1);
+  color: var(--muted2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.chip:hover, .chip.active {
+  background: rgba(245,200,66,0.1);
+  border-color: rgba(245,200,66,0.4);
+  color: var(--accent);
+}
+
+/* ── MONTH LABEL ── */
+.month-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin: 16px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.month-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── EMPTY ── */
+.empty {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 44px; margin-bottom: 12px; }
+.empty h3 { font-family: var(--fh); font-size: 17px; color: var(--text); margin-bottom: 7px; }
+.empty p { font-size: 13px; line-height: 1.6; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 96px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s;
+  white-space: nowrap;
+  max-width: calc(100vw - 40px);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.ok { border-color: var(--green); color: var(--green); }
+#toast.err { border-color: var(--red); color: var(--red); }
+
+/* ── IMAGE VIEWER ── */
+#img-viewer {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.96);
+  z-index: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+#img-viewer.open { display: flex; }
+#img-viewer img { max-width:100%; max-height:75vh; border-radius:12px; object-fit:contain; }
+#img-viewer .close-iv {
+  position: absolute; top:18px; right:18px;
+  width:40px;height:40px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;
+}
+#iv-caption { font-size:12px;color:var(--muted2);text-align:center; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════ SETUP / LOGIN ══════════════════════════ -->
+<div id="setup-screen">
+  <div class="bg-glow glow1"></div>
+  <div class="bg-glow glow2"></div>
+
+  <!-- Step 1: Config (shown only first time) -->
+  <div id="config-panel" class="setup-card" style="margin-bottom:0;">
+    <div class="app-logo">⛽</div>
+    <h1>FuelVault</h1>
+    <p class="tagline">Scan fuel bills with your camera, save to Google Drive, export for tax filing.</p>
+    <ul class="features">
+      <li><span class="feat-icon">📷</span> Camera scan — AI reads bill details</li>
+      <li><span class="feat-icon">☁️</span> Auto-saves to your Google Drive</li>
+      <li><span class="feat-icon">🚗</span> Track multiple vehicles</li>
+      <li><span class="feat-icon">📊</span> Export as Excel or ZIP</li>
+    </ul>
+
+    <div class="config-section">
+      <h3>🔑 One-time setup</h3>
+      <p>
+        Paste your <strong>Google OAuth Client ID</strong> from
+        <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a>.<br><br>
+        Enable <strong>Google Drive API</strong> + create OAuth 2.0 Web credentials.
+        Add <code style="font-family:var(--fm);font-size:11px;background:var(--s1);padding:1px 5px;border-radius:4px;">https://yourusername.github.io</code> as an Authorized JavaScript Origin.
+      </p>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Google OAuth Client ID</label>
+        <input class="form-input" id="cfg-client-id" placeholder="xxxxxxx.apps.googleusercontent.com">
+      </div>
+    </div>
+
+    <button class="btn btn-google" onclick="startSignIn()" style="margin-top:4px;">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <p style="text-align:center;font-size:11px;color:var(--muted);margin-top:12px;">Your data saves to your own Google Drive. We never see it.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════ MAIN APP ══════════════════════════ -->
+<div id="app">
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-logo-icon">⛽</div>
+      FuelVault
+    </div>
+    <div class="header-right" style="position:relative;">
+      <div class="drive-pill">
+        <div class="drive-dot" id="drive-dot"></div>
+        <span id="drive-txt">Drive</span>
+      </div>
+      <div class="avatar" id="avatar" onclick="toggleMenu()">U</div>
+      <div class="user-menu" id="user-menu">
+        <div class="menu-item" id="menu-name">👤 User</div>
+        <div class="menu-sep"></div>
+        <div class="menu-item" onclick="openSettings()">⚙️ Settings</div>
+        <div class="menu-sep"></div>
+        <div class="menu-item danger" onclick="signOut()">🚪 Sign out</div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="nav-bar">
+    <div class="nav-item active" data-tab="dash" onclick="tab('dash',this)">📊 Dashboard</div>
+    <div class="nav-item" data-tab="bills" onclick="tab('bills',this)">🧾 Bills</div>
+    <div class="nav-item" data-tab="vehicles" onclick="tab('vehicles',this)">🚗 Vehicles</div>
+    <div class="nav-item" data-tab="export" onclick="tab('export',this)">📤 Export</div>
+  </nav>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dash">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">This Month</div>
+          <div class="stat-val y" id="s-month">0</div>
+          <div class="stat-sub">bills scanned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">This Year</div>
+          <div class="stat-val g" id="s-year">0</div>
+          <div class="stat-sub">total bills</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Vehicles</div>
+          <div class="stat-val" id="s-vehs">0</div>
+          <div class="stat-sub">registered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">In Drive</div>
+          <div class="stat-val" id="s-drive" style="font-size:18px;">—</div>
+          <div class="stat-sub">uploaded</div>
+        </div>
+      </div>
+      <div class="section-head">
+        <div class="section-title">Recent Bills</div>
+        <div class="section-link" onclick="tab('bills', document.querySelector('[data-tab=bills]'))">See all →</div>
+      </div>
+      <div id="recent-list"></div>
+    </div>
+
+    <!-- BILLS -->
+    <div id="tab-bills" class="hidden">
+      <div class="filter-bar" id="bills-filters">
+        <div class="chip active" onclick="filterBills('all',this)">All</div>
+      </div>
+      <div id="bills-list"></div>
+    </div>
+
+    <!-- VEHICLES -->
+    <div id="tab-vehicles" class="hidden">
+      <div id="veh-list"></div>
+      <button class="btn btn-primary btn-block" onclick="openVehModal()">+ Add Vehicle</button>
+    </div>
+
+    <!-- EXPORT -->
+    <div id="tab-export" class="hidden">
+      <div class="export-card">
+        <h3>📊 Excel Spreadsheet</h3>
+        <p>All bills as a structured Excel file — bill number, date, vehicle, fuel type, Drive link. Ready for your CA or ITR filing.</p>
+        <div class="export-btns">
+          <button class="btn btn-primary btn-sm" onclick="exportXlsx('all')">All Years</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportXlsx('year')">This Year</button>
+        </div>
+      </div>
+      <div class="export-card">
+        <h3>🗜️ ZIP of Images</h3>
+        <p>Download all scanned invoice images in a ZIP, organised as <code style="font-family:var(--fm);font-size:11px;">Year / Month / bill.jpg</code> — mirrors your Drive.</p>
+        <div class="export-btns">
+          <button class="btn btn-primary btn-sm" onclick="exportZip('all')">All Years</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportZip('year')">This Year</button>
+        </div>
+      </div>
+      <div class="export-card">
+        <h3>☁️ Open Google Drive</h3>
+        <p>Browse your FuelVault folder in Drive directly.</p>
+        <button class="btn btn-secondary btn-sm" onclick="openDrive()">Open in Drive ↗</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <button class="fab" onclick="openScan()">📷</button>
+  <div class="fab-label">Scan Bill</div>
+</div>
+
+<!-- ══════════════════════════ MODALS ══════════════════════════ -->
+
+<!-- SCAN MODAL -->
+<div class="overlay" id="scan-modal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">📷 Scan Fuel Invoice</div>
+
+    <div class="cam-wrap" id="cam-wrap">
+      <video id="cam-video" autoplay playsinline muted></video>
+      <canvas id="cam-canvas"></canvas>
+      <div class="cam-corners"></div>
+      <div class="cam-corners2"></div>
+      <div class="proc-overlay" id="proc-overlay">
+        <div class="spinner"></div>
+        <div class="proc-text" id="proc-text">Reading invoice...</div>
+      </div>
+    </div>
+
+    <div class="cam-actions" style="margin-bottom:14px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="captureFrame()">📸 Capture</button>
+      <label class="btn btn-secondary" style="flex:1;cursor:pointer;">
+        📁 Upload
+        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleUpload(event)">
+      </label>
+    </div>
+
+    <div class="scan-result" id="scan-result">
+      <div class="result-label">Extracted — edit if needed</div>
+      <div class="form-group">
+        <label class="form-label">Bill / Invoice Number</label>
+        <input class="form-input" id="r-billno" placeholder="Not detected — enter manually">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="r-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vehicle</label>
+        <select class="form-select" id="r-vehicle">
+          <option value="">Select vehicle...</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Fuel Type</label>
+        <select class="form-select" id="r-fuel">
+          <option value="Petrol">Petrol</option>
+          <option value="Diesel">Diesel</option>
+          <option value="CNG">CNG</option>
+          <option value="EV">EV Charge</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-block" id="save-btn" onclick="saveBill()">💾 Save to Drive</button>
+    </div>
+
+    <button class="btn btn-secondary btn-block" onclick="closeScan()" style="margin-top:11px;">Cancel</button>
+  </div>
+</div>
+
+<!-- VEHICLE MODAL -->
+<div class="overlay" id="veh-modal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="veh-modal-title">Add Vehicle</div>
+    <input type="hidden" id="veh-edit-id">
+    <div class="form-group">
+      <label class="form-label">Vehicle Name</label>
+      <input class="form-input" id="veh-name" placeholder="e.g. Honda City, Maruti Swift">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Plate Number</label>
+      <input class="form-input" id="veh-plate" placeholder="e.g. TN01AB1234" style="text-transform:uppercase;">
+    </div>
+    <div class="form-group" style="margin-bottom:18px;">
+      <label class="form-label">Default Fuel</label>
+      <select class="form-select" id="veh-fuel">
+        <option value="Petrol">Petrol</option>
+        <option value="Diesel">Diesel</option>
+        <option value="CNG">CNG</option>
+        <option value="EV">Electric</option>
+        <option value="Hybrid">Hybrid</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveVehicle()">Save</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('veh-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- BILL DETAIL MODAL -->
+<div class="overlay" id="detail-modal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Bill Details</div>
+    <div id="detail-content"></div>
+    <button class="btn btn-secondary btn-block" onclick="closeModal('detail-modal')" style="margin-top:14px;">Close</button>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay center" id="settings-modal">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">⚙️ Settings</div>
+    <div class="form-group" style="margin-bottom:18px;">
+      <label class="form-label">Google OAuth Client ID</label>
+      <input class="form-input" id="cfg-client-id-settings" placeholder="xxxxxxx.apps.googleusercontent.com">
+      <div style="font-size:11px;color:var(--muted);margin-top:5px;">Stored in your browser only.</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveSettings()">Save & Reload</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('settings-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE VIEWER -->
+<div id="img-viewer">
+  <div class="close-iv" onclick="closeViewer()">✕</div>
+  <img id="iv-img" src="" alt="Invoice">
+  <div id="iv-caption"></div>
+</div>
+
+<!-- TOAST -->
+<div id="toast">✓</div>
+
+<!-- ══════════════════════════ SCRIPTS ══════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e) { toast('Storage full — older images may be dropped', 'err'); } },
+  raw: k => localStorage.getItem(k),
+  setRaw: (k, v) => localStorage.setItem(k, v)
+};
+
+let CFG = { clientId: LS.raw('fv_cid') || '' };
+let AUTH = { token: null, user: null };
+let DB = {
+  vehicles: LS.get('fv_vehicles') || [],
+  bills: LS.get('fv_bills') || []
+};
+let driveFolderId = LS.raw('fv_root') || null;
+let camStream = null;
+let capturedB64 = null;
+let billFilter = 'all';
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Pre-fill client id if saved
+  if (CFG.clientId) document.getElementById('cfg-client-id').value = CFG.clientId;
+  loadGIS();
+});
+
+function loadGIS() {
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  document.head.appendChild(s);
+}
+
+// ─────────────────────────────────────────────
+//  AUTH
+// ─────────────────────────────────────────────
+function startSignIn() {
+  const cid = document.getElementById('cfg-client-id').value.trim();
+  if (!cid) { toast('Paste your Google Client ID first', 'err'); return; }
+  CFG.clientId = cid;
+  LS.setRaw('fv_cid', cid);
+  if (!window.google?.accounts?.oauth2) {
+    toast('Google SDK loading — try again in a second', 'err'); return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CFG.clientId,
+    scope: [
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ].join(' '),
+    callback: async (resp) => {
+      if (resp.error) { toast('Sign in failed: ' + resp.error, 'err'); return; }
+      AUTH.token = resp.access_token;
+      await loadUser();
+      launchApp();
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function loadUser() {
+  const r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: 'Bearer ' + AUTH.token }
+  });
+  AUTH.user = await r.json();
+}
+
+function signOut() {
+  AUTH = { token: null, user: null };
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  closeModal('user-menu');
+}
+
+// ─────────────────────────────────────────────
+//  APP LAUNCH
+// ─────────────────────────────────────────────
+function launchApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  // Avatar
+  const av = document.getElementById('avatar');
+  if (AUTH.user?.picture) av.innerHTML = `<img src="${AUTH.user.picture}">`;
+  else av.textContent = (AUTH.user?.name || 'U')[0].toUpperCase();
+  document.getElementById('menu-name').textContent = '👤 ' + (AUTH.user?.name || AUTH.user?.email || 'User');
+  renderAll();
+  initDrive();
+}
+
+function toggleMenu() {
+  document.getElementById('user-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#avatar') && !e.target.closest('#user-menu'))
+    document.getElementById('user-menu').classList.remove('open');
+});
+
+function openSettings() {
+  document.getElementById('cfg-client-id-settings').value = CFG.clientId;
+  openModal('settings-modal');
+}
+function saveSettings() {
+  const v = document.getElementById('cfg-client-id-settings').value.trim();
+  if (!v) { toast('Client ID required', 'err'); return; }
+  LS.setRaw('fv_cid', v);
+  toast('Saved — reloading', 'ok');
+  setTimeout(() => location.reload(), 900);
+}
+
+// ─────────────────────────────────────────────
+//  GOOGLE DRIVE
+// ─────────────────────────────────────────────
+async function driveApi(method, path, body, isUpload) {
+  const base = isUpload
+    ? 'https://www.googleapis.com/upload/drive/v3'
+    : 'https://www.googleapis.com/drive/v3';
+  const headers = { Authorization: 'Bearer ' + AUTH.token };
+  if (!isUpload && body) headers['Content-Type'] = 'application/json';
+  const r = await fetch(base + path, {
+    method, headers,
+    body: isUpload ? body : (body ? JSON.stringify(body) : undefined)
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.error?.message || 'Drive error');
+  }
+  return r.json().catch(() => ({}));
+}
+
+async function findOrCreate(name, parentId) {
+  const p = parentId ? `'${parentId}'` : `'root'`;
+  const q = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false and ${p} in parents`;
+  const res = await driveApi('GET', `/files?q=${encodeURIComponent(q)}&fields=files(id)`);
+  if (res.files?.length) return res.files[0].id;
+  const f = await driveApi('POST', '/files', {
+    name,
+    mimeType: 'application/vnd.google-apps.folder',
+    parents: parentId ? [parentId] : ['root']
+  });
+  return f.id;
+}
+
+async function initDrive() {
+  try {
+    driveFolderId = await findOrCreate('FuelVault', null);
+    LS.setRaw('fv_root', driveFolderId);
+    setDriveStatus('ok');
+  } catch(e) {
+    setDriveStatus('err');
+  }
+}
+
+function setDriveStatus(s) {
+  document.getElementById('drive-dot').className = 'drive-dot ' + s;
+  document.getElementById('drive-txt').textContent = s === 'ok' ? 'Drive ✓' : 'Drive ✗';
+  refreshDriveStat();
+}
+
+async function uploadFile(blob, filename, year, month) {
+  if (!driveFolderId) throw new Error('Drive not ready');
+  const yId = await findOrCreate(String(year), driveFolderId);
+  const mName = new Date(year, month - 1, 1).toLocaleString('default', { month: 'long' });
+  const mId = await findOrCreate(mName, yId);
+  const meta = { name: filename, parents: [mId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+  form.append('file', blob);
+  const r = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+    { method: 'POST', headers: { Authorization: 'Bearer ' + AUTH.token }, body: form }
+  );
+  return r.json();
+}
+
+function openDrive() {
+  if (!driveFolderId) { toast('Drive not connected', 'err'); return; }
+  window.open('https://drive.google.com/drive/folders/' + driveFolderId, '_blank');
+}
+
+// ─────────────────────────────────────────────
+//  TESSERACT OCR
+// ─────────────────────────────────────────────
+async function ocrImage(base64Jpeg) {
+  const url = 'data:image/jpeg;base64,' + base64Jpeg;
+  try {
+    const result = await Tesseract.recognize(url, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          document.getElementById('proc-text').textContent =
+            'Reading... ' + Math.round(m.progress * 100) + '%';
+        }
+      }
+    });
+    return parseInvoiceText(result.data.text);
+  } catch(e) {
+    console.warn('OCR error', e);
+    return {};
+  }
+}
+
+function parseInvoiceText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const full = text.toUpperCase();
+  const out = {};
+
+  // ── Bill Number ──
+  // Look for patterns like: Bill No: XXXX / Invoice No: XXXX / Receipt: XXXX
+  const billPatterns = [
+    /(?:BILL\s*(?:NO|NUMBER|#)\s*[:\-]?\s*)([A-Z0-9\-\/]+)/i,
+    /(?:INVOICE\s*(?:NO|NUMBER|#)\s*[:\-]?\s*)([A-Z0-9\-\/]+)/i,
+    /(?:RECEIPT\s*(?:NO|NUMBER|#)\s*[:\-]?\s*)([A-Z0-9\-\/]+)/i,
+    /(?:TRANSACTION\s*(?:NO|ID)\s*[:\-]?\s*)([A-Z0-9\-\/]+)/i,
+    /\b([A-Z]{2,4}[\-\/]?\d{6,12})\b/,
+    /\b(\d{8,14})\b/
+  ];
+  for (const pat of billPatterns) {
+    const m = text.match(pat);
+    if (m && m[1] && m[1].length >= 4) { out.bill_no = m[1].trim(); break; }
+  }
+
+  // ── Date ──
+  const datePatterns = [
+    /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/,   // DD/MM/YYYY
+    /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,   // YYYY-MM-DD
+    /(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Z]*\s+(\d{4})/i
+  ];
+  for (const pat of datePatterns) {
+    const m = text.match(pat);
+    if (m) {
+      try {
+        let d;
+        if (pat.source.startsWith('(\\d{4})')) {
+          d = new Date(m[1], m[2]-1, m[3]);
+        } else if (m[2]?.match(/[A-Z]+/i)) {
+          const months = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+          d = new Date(m[3], months[m[2].toUpperCase().slice(0,3)], m[1]);
+        } else {
+          // Assume DD/MM/YYYY for Indian fuel stations
+          d = new Date(m[3], m[2]-1, m[1]);
+        }
+        if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+          out.date = d.toISOString().split('T')[0];
+          break;
+        }
+      } catch {}
+    }
+  }
+
+  // ── Vehicle Number (Indian format) ──
+  // Standard: TN01AB1234 or TN 01 AB 1234
+  const platePattern = /\b([A-Z]{2}[\s\-]?\d{2}[\s\-]?[A-Z]{1,2}[\s\-]?\d{4})\b/gi;
+  const plates = [...text.matchAll(platePattern)];
+  if (plates.length) {
+    out.vehicle_no = plates[0][1].replace(/[\s\-]/g, '').toUpperCase();
+  }
+
+  // ── Fuel Type ──
+  if (/\bDIESEL\b/i.test(full)) out.fuel_type = 'Diesel';
+  else if (/\bPETROL\b|\bMOTOR\s*SPIRIT\b|\bMS\b/i.test(full)) out.fuel_type = 'Petrol';
+  else if (/\bCNG\b/i.test(full)) out.fuel_type = 'CNG';
+  else if (/\bEV\b|\bELECTRIC\b/i.test(full)) out.fuel_type = 'EV';
+
+  // ── Amount ──
+  const amtPattern = /(?:TOTAL|AMOUNT|RS|₹|INR)\s*[:\.]?\s*(\d+(?:\.\d{1,2})?)/gi;
+  const amounts = [...text.matchAll(amtPattern)];
+  if (amounts.length) out.amount = parseFloat(amounts[amounts.length-1][1]);
+
+  return out;
+}
+
+// ─────────────────────────────────────────────
+//  CAMERA
+// ─────────────────────────────────────────────
+async function openScan() {
+  if (!AUTH.token) { toast('Please sign in first', 'err'); return; }
+  openModal('scan-modal');
+  document.getElementById('scan-result').classList.remove('show');
+  capturedB64 = null;
+  populateVehicleSelect('r-vehicle');
+  // Remove any previous upload preview
+  const oldImg = document.getElementById('cam-wrap').querySelector('img.preview');
+  if (oldImg) oldImg.remove();
+  document.getElementById('cam-video').style.display = 'block';
+
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+    });
+    document.getElementById('cam-video').srcObject = camStream;
+  } catch(e) {
+    toast('Camera unavailable — use Upload', 'err');
+  }
+}
+
+function closeScan() {
+  stopCam();
+  closeModal('scan-modal');
+  document.getElementById('scan-result').classList.remove('show');
+  capturedB64 = null;
+}
+
+function stopCam() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+}
+
+async function captureFrame() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const b64 = canvas.toDataURL('image/jpeg', 0.88).split(',')[1];
+  capturedB64 = b64;
+  await runOCR(b64);
+}
+
+async function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const b64 = ev.target.result.split(',')[1];
+    capturedB64 = b64;
+    // Show preview
+    const video = document.getElementById('cam-video');
+    video.style.display = 'none';
+    let prev = document.getElementById('cam-wrap').querySelector('img.preview');
+    if (!prev) {
+      prev = document.createElement('img');
+      prev.className = 'preview';
+      prev.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      document.getElementById('cam-wrap').appendChild(prev);
+    }
+    prev.src = ev.target.result;
+    await runOCR(b64);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = ''; // reset input
+}
+
+async function runOCR(b64) {
+  const overlay = document.getElementById('proc-overlay');
+  document.getElementById('proc-text').textContent = 'Starting OCR...';
+  overlay.classList.add('show');
+  stopCam();
+  try {
+    const data = await ocrImage(b64);
+    overlay.classList.remove('show');
+    fillScanResult(data);
+  } catch(e) {
+    overlay.classList.remove('show');
+    toast('OCR failed — fill in manually', 'err');
+    fillScanResult({});
+  }
+}
+
+function fillScanResult(data) {
+  document.getElementById('r-billno').value = data.bill_no || '';
+  document.getElementById('r-date').value = data.date || new Date().toISOString().split('T')[0];
+  if (data.fuel_type) document.getElementById('r-fuel').value = data.fuel_type;
+  // Match vehicle plate
+  if (data.vehicle_no) {
+    const norm = data.vehicle_no.replace(/\s/g,'').toUpperCase();
+    const match = DB.vehicles.find(v =>
+      v.plate.replace(/\s/g,'').toUpperCase() === norm ||
+      norm.includes(v.plate.replace(/\s/g,'').toUpperCase())
+    );
+    if (match) document.getElementById('r-vehicle').value = match.id;
+  }
+  document.getElementById('scan-result').classList.add('show');
+}
+
+function populateVehicleSelect(id) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="">Select vehicle...</option>';
+  DB.vehicles.forEach(v => {
+    sel.innerHTML += `<option value="${v.id}">${v.name} (${v.plate})</option>`;
+  });
+}
+
+// ─────────────────────────────────────────────
+//  SAVE BILL
+// ─────────────────────────────────────────────
+async function saveBill() {
+  const billNo = document.getElementById('r-billno').value.trim();
+  const date   = document.getElementById('r-date').value;
+  const vehId  = document.getElementById('r-vehicle').value;
+  const fuel   = document.getElementById('r-fuel').value;
+
+  if (!billNo) { toast('Bill number required', 'err'); return; }
+  if (!date)   { toast('Date required', 'err'); return; }
+  if (!vehId)  { toast('Select a vehicle', 'err'); return; }
+  if (!capturedB64) { toast('No image captured', 'err'); return; }
+
+  const veh = DB.vehicles.find(v => v.id === vehId);
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const filename = `${year}${String(month).padStart(2,'0')}_${billNo.replace(/[^a-zA-Z0-9]/g,'_')}_${veh.plate}.jpg`;
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading to Drive...';
+
+  let driveLink = null, driveFileId = null;
+  try {
+    const blob = b64toBlob(capturedB64, 'image/jpeg');
+    const res = await uploadFile(blob, filename, year, month);
+    driveLink = res.webViewLink;
+    driveFileId = res.id;
+  } catch(e) {
+    toast('Drive upload failed — saved locally', 'err');
+  }
+
+  const bill = {
+    id: 'b' + Date.now(),
+    billNo, date, year, month,
+    vehicleId: vehId,
+    vehicleName: veh.name,
+    vehiclePlate: veh.plate,
+    fuel, filename,
+    driveLink, driveFileId,
+    img: capturedB64,
+    at: new Date().toISOString()
+  };
+
+  DB.bills.unshift(bill);
+  saveDB();
+  closeScan();
+  toast('Bill saved' + (driveLink ? ' & uploaded ✓' : ' locally'), 'ok');
+  renderAll();
+
+  btn.disabled = false;
+  btn.textContent = '💾 Save to Drive';
+}
+
+function b64toBlob(b64, mime) {
+  const bytes = atob(b64);
+  const ab = new ArrayBuffer(bytes.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < bytes.length; i++) ia[i] = bytes.charCodeAt(i);
+  return new Blob([ab], { type: mime });
+}
+
+// ─────────────────────────────────────────────
+//  VEHICLES
+// ─────────────────────────────────────────────
+function openVehModal(id) {
+  document.getElementById('veh-edit-id').value = id || '';
+  document.getElementById('veh-modal-title').textContent = id ? 'Edit Vehicle' : 'Add Vehicle';
+  if (id) {
+    const v = DB.vehicles.find(x => x.id === id);
+    document.getElementById('veh-name').value = v.name;
+    document.getElementById('veh-plate').value = v.plate;
+    document.getElementById('veh-fuel').value = v.fuel;
+  } else {
+    document.getElementById('veh-name').value = '';
+    document.getElementById('veh-plate').value = '';
+    document.getElementById('veh-fuel').value = 'Petrol';
+  }
+  openModal('veh-modal');
+}
+
+function saveVehicle() {
+  const name  = document.getElementById('veh-name').value.trim();
+  const plate = document.getElementById('veh-plate').value.trim().toUpperCase();
+  const fuel  = document.getElementById('veh-fuel').value;
+  if (!name || !plate) { toast('Name and plate required', 'err'); return; }
+
+  const editId = document.getElementById('veh-edit-id').value;
+  if (editId) {
+    const i = DB.vehicles.findIndex(v => v.id === editId);
+    if (i > -1) DB.vehicles[i] = { ...DB.vehicles[i], name, plate, fuel };
+  } else {
+    DB.vehicles.push({ id: 'v' + Date.now(), name, plate, fuel });
+  }
+  saveDB();
+  closeModal('veh-modal');
+  renderAll();
+  toast('Vehicle saved ✓', 'ok');
+}
+
+function deleteVehicle(id) {
+  if (!confirm('Delete this vehicle?')) return;
+  DB.vehicles = DB.vehicles.filter(v => v.id !== id);
+  saveDB();
+  renderAll();
+  toast('Vehicle removed');
+}
+
+function fuelEmoji(f) {
+  return { Petrol:'⛽', Diesel:'🛢️', CNG:'💨', EV:'⚡', Hybrid:'🔋' }[f] || '🚗';
+}
+
+// ─────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────
+function renderAll() {
+  renderStats();
+  renderRecent();
+  renderBillsList();
+  renderVehicles();
+  refreshDriveStat();
+}
+
+function renderStats() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+  document.getElementById('s-month').textContent = DB.bills.filter(b => b.year===y && b.month===m).length;
+  document.getElementById('s-year').textContent  = DB.bills.filter(b => b.year===y).length;
+  document.getElementById('s-vehs').textContent  = DB.vehicles.length;
+}
+
+function refreshDriveStat() {
+  document.getElementById('s-drive').textContent = DB.bills.filter(b => b.driveLink).length + ' files';
+}
+
+function renderRecent() {
+  const el = document.getElementById('recent-list');
+  const recent = DB.bills.slice(0, 5);
+  el.innerHTML = recent.length
+    ? recent.map(billHTML).join('')
+    : `<div class="empty"><div class="empty-icon">📷</div><h3>No bills yet</h3><p>Tap the 📷 button to scan your first fuel invoice</p></div>`;
+}
+
+function renderBillsList() {
+  // Rebuild year chips
+  const bar = document.getElementById('bills-filters');
+  const years = [...new Set(DB.bills.map(b => b.year))].sort((a,b) => b-a);
+  bar.innerHTML = `<div class="chip ${billFilter==='all'?'active':''}" onclick="filterBills('all',this)">All</div>`;
+  years.forEach(y => {
+    bar.innerHTML += `<div class="chip ${billFilter===String(y)?'active':''}" onclick="filterBills('${y}',this)">${y}</div>`;
+  });
+
+  const el = document.getElementById('bills-list');
+  let bills = DB.bills;
+  if (billFilter !== 'all') bills = bills.filter(b => String(b.year) === billFilter);
+
+  if (!bills.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🧾</div><h3>No bills</h3><p>Scanned bills appear here</p></div>`;
+    return;
+  }
+
+  // Group by year-month
+  const groups = {};
+  bills.forEach(b => {
+    const k = `${b.year}-${String(b.month).padStart(2,'0')}`;
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(b);
+  });
+
+  let html = '';
+  Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(k => {
+    const [y, mo] = k.split('-');
+    const label = new Date(y, mo-1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    html += `<div class="month-label">${label} <span style="color:var(--accent);font-size:11px;">${groups[k].length} bill${groups[k].length>1?'s':''}</span></div>`;
+    groups[k].forEach(b => html += billHTML(b));
+  });
+  el.innerHTML = html;
+}
+
+function filterBills(f, el) {
+  billFilter = f;
+  document.querySelectorAll('#bills-filters .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderBillsList();
+}
+
+function billHTML(b) {
+  const thumb = b.img
+    ? `<img src="data:image/jpeg;base64,${b.img}" alt="bill">`
+    : '🧾';
+  return `<div class="bill-card" onclick="showDetail('${b.id}')">
+    <div class="bill-thumb">${thumb}</div>
+    <div class="bill-body">
+      <div class="bill-num">#${b.billNo}</div>
+      <div class="bill-meta">
+        <span>${new Date(b.date).toLocaleDateString('en-IN')}</span>
+        <span>${b.vehiclePlate}</span>
+        <span>${b.fuel}</span>
+      </div>
+    </div>
+    ${b.driveLink ? '<span class="badge g">☁️ Drive</span>' : '<span class="badge">Local</span>'}
+  </div>`;
+}
+
+function renderVehicles() {
+  const el = document.getElementById('veh-list');
+  if (!DB.vehicles.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🚗</div><h3>No vehicles</h3><p>Add your car or bike to start tracking</p></div>`;
+    return;
+  }
+  el.innerHTML = DB.vehicles.map(v => `
+    <div class="vehicle-card">
+      <div class="veh-icon">${fuelEmoji(v.fuel)}</div>
+      <div class="veh-info">
+        <div class="veh-name">${v.name}</div>
+        <div class="veh-plate">${v.plate}</div>
+        <div class="veh-stat">${v.fuel} · ${DB.bills.filter(b => b.vehicleId===v.id).length} bills</div>
+      </div>
+      <div class="veh-actions">
+        <div class="icon-btn" onclick="openVehModal('${v.id}')">✏️</div>
+        <div class="icon-btn del" onclick="deleteVehicle('${v.id}')">🗑️</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showDetail(id) {
+  const b = DB.bills.find(x => x.id === id);
+  if (!b) return;
+  document.getElementById('detail-content').innerHTML = `
+    ${b.img ? `<div onclick="openViewer('${id}')" style="cursor:pointer;margin-bottom:14px;">
+      <img src="data:image/jpeg;base64,${b.img}" style="width:100%;border-radius:12px;max-height:240px;object-fit:cover;">
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:5px;">Tap to enlarge</div>
+    </div>` : ''}
+    <div style="background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+      ${detailRow('Bill No', '#' + b.billNo)}
+      ${detailRow('Date', new Date(b.date).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}))}
+      ${detailRow('Vehicle', b.vehicleName + ' · ' + b.vehiclePlate)}
+      ${detailRow('Fuel', b.fuel)}
+      ${detailRow('Drive', b.driveLink ? `<a href="${b.driveLink}" target="_blank" style="color:var(--green);">View in Drive ↗</a>` : '<span style="color:var(--muted);">Not synced</span>')}
+    </div>
+    <button class="btn btn-danger btn-block btn-sm" onclick="deleteBill('${b.id}')" style="margin-top:12px;">Delete Bill</button>
+  `;
+  openModal('detail-modal');
+}
+
+function detailRow(label, val) {
+  return `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);flex-shrink:0;">${label}</span>
+    <span style="font-size:13px;text-align:right;">${val}</span>
+  </div>`;
+}
+
+function deleteBill(id) {
+  if (!confirm('Delete this bill?')) return;
+  DB.bills = DB.bills.filter(b => b.id !== id);
+  saveDB();
+  closeModal('detail-modal');
+  renderAll();
+  toast('Bill deleted');
+}
+
+function openViewer(id) {
+  const b = DB.bills.find(x => x.id === id);
+  if (!b?.img) return;
+  document.getElementById('iv-img').src = 'data:image/jpeg;base64,' + b.img;
+  document.getElementById('iv-caption').textContent = `#${b.billNo} · ${b.vehiclePlate} · ${new Date(b.date).toLocaleDateString('en-IN')}`;
+  document.getElementById('img-viewer').classList.add('open');
+}
+function closeViewer() { document.getElementById('img-viewer').classList.remove('open'); }
+
+// ─────────────────────────────────────────────
+//  EXPORT
+// ─────────────────────────────────────────────
+function exportXlsx(scope) {
+  let bills = DB.bills;
+  if (scope === 'year') bills = bills.filter(b => b.year === new Date().getFullYear());
+  if (!bills.length) { toast('No bills to export', 'err'); return; }
+
+  const rows = [['Bill Number','Date','Year','Month','Vehicle','Plate','Fuel Type','Google Drive Link','Scanned At']];
+  bills.forEach(b => rows.push([
+    b.billNo, b.date, b.year,
+    new Date(b.year, b.month-1,1).toLocaleString('default',{month:'long'}),
+    b.vehicleName, b.vehiclePlate, b.fuel,
+    b.driveLink || '',
+    new Date(b.at).toLocaleDateString('en-IN')
+  ]));
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [14,12,6,10,18,14,10,40,14].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Fuel Bills');
+  XLSX.writeFile(wb, `FuelVault_${scope==='year' ? new Date().getFullYear() : 'All'}.xlsx`);
+  toast('Excel downloaded ✓', 'ok');
+}
+
+async function exportZip(scope) {
+  let bills = DB.bills.filter(b => b.img);
+  if (scope === 'year') bills = bills.filter(b => b.year === new Date().getFullYear());
+  if (!bills.length) { toast('No images to export', 'err'); return; }
+
+  toast('Building ZIP...');
+  const zip = new JSZip();
+  bills.forEach(b => {
+    const mName = new Date(b.year, b.month-1,1).toLocaleString('default',{month:'long'});
+    zip.file(`${b.year}/${mName}/${b.filename||b.billNo+'.jpg'}`, b.img, { base64: true });
+  });
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `FuelVault_${scope==='year' ? new Date().getFullYear() : 'All'}.zip`;
+  a.click();
+  toast('ZIP downloaded ✓', 'ok');
+}
+
+// ─────────────────────────────────────────────
+//  UTILS
+// ─────────────────────────────────────────────
+function saveDB() {
+  LS.set('fv_vehicles', DB.vehicles);
+  try {
+    LS.set('fv_bills', DB.bills);
+  } catch(e) {
+    // trim images from older bills if storage is full
+    const trimmed = DB.bills.map((b, i) => i > 20 ? { ...b, img: null } : b);
+    LS.set('fv_bills', trimmed);
+  }
+}
+
+function tab(name, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  ['dash','bills','vehicles','export'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+  });
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close on backdrop tap
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target === el) {
+      if (el.id === 'scan-modal') closeScan();
+      else closeModal(el.id);
+    }
+  });
+});
+
+let toastT;
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = (type==='ok'?'✓ ':type==='err'?'✗ ':'') + msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  // small DOM trick — class is 'show' not separate
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toastT);
+  toastT = setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(12px)';
+  }, 3000);
+}
+</script>
+</body>
+</html>
