@@ -906,6 +906,10 @@ body {
           <option value="EV">EV Charge</option>
         </select>
       </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Amount Paid (₹)</label>
+        <input class="form-input" type="number" id="r-amount" placeholder="e.g. 2500" min="0" step="0.01">
+      </div>
       <button class="btn btn-primary btn-block" id="save-btn" onclick="saveBill()">💾 Save to Drive</button>
     </div>
 
@@ -1348,6 +1352,7 @@ function fillScanResult(data) {
   document.getElementById('r-billno').value = data.bill_no || '';
   document.getElementById('r-date').value = data.date || new Date().toISOString().split('T')[0];
   if (data.fuel_type) document.getElementById('r-fuel').value = data.fuel_type;
+  document.getElementById('r-amount').value = data.amount || '';
   // Match vehicle plate
   if (data.vehicle_no) {
     const norm = data.vehicle_no.replace(/\s/g,'').toUpperCase();
@@ -1372,10 +1377,11 @@ function populateVehicleSelect(id) {
 //  SAVE BILL
 // ─────────────────────────────────────────────
 async function saveBill() {
-  const billNo = document.getElementById('r-billno').value.trim();
-  const date   = document.getElementById('r-date').value;
-  const vehId  = document.getElementById('r-vehicle').value;
-  const fuel   = document.getElementById('r-fuel').value;
+  const billNo  = document.getElementById('r-billno').value.trim();
+  const date    = document.getElementById('r-date').value;
+  const vehId   = document.getElementById('r-vehicle').value;
+  const fuel    = document.getElementById('r-fuel').value;
+  const amount  = parseFloat(document.getElementById('r-amount').value) || null;
 
   if (!billNo) { toast('Bill number required', 'err'); return; }
   if (!date)   { toast('Date required', 'err'); return; }
@@ -1408,7 +1414,7 @@ async function saveBill() {
     vehicleId: vehId,
     vehicleName: veh.name,
     vehiclePlate: veh.plate,
-    fuel, filename,
+    fuel, amount, filename,
     driveLink, driveFileId,
     img: capturedB64,
     at: new Date().toISOString()
@@ -1609,6 +1615,7 @@ function showDetail(id) {
       ${detailRow('Date', new Date(b.date).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}))}
       ${detailRow('Vehicle', b.vehicleName + ' · ' + b.vehiclePlate)}
       ${detailRow('Fuel', b.fuel)}
+      ${detailRow('Amount', b.amount ? '₹' + b.amount.toLocaleString('en-IN') : '—')}
       ${detailRow('Drive', b.driveLink ? `<a href="${b.driveLink}" target="_blank" style="color:var(--green);">View in Drive ↗</a>` : '<span style="color:var(--muted);">Not synced</span>')}
     </div>
     <button class="btn btn-danger btn-block btn-sm" onclick="deleteBill('${b.id}')" style="margin-top:12px;">Delete Bill</button>
@@ -1649,17 +1656,18 @@ function exportXlsx(scope) {
   if (scope === 'year') bills = bills.filter(b => b.year === new Date().getFullYear());
   if (!bills.length) { toast('No bills to export', 'err'); return; }
 
-  const rows = [['Bill Number','Date','Year','Month','Vehicle','Plate','Fuel Type','Google Drive Link','Scanned At']];
+  const rows = [['Bill Number','Date','Year','Month','Vehicle','Plate','Fuel Type','Amount (₹)','Google Drive Link','Scanned At']];
   bills.forEach(b => rows.push([
     b.billNo, b.date, b.year,
     new Date(b.year, b.month-1,1).toLocaleString('default',{month:'long'}),
     b.vehicleName, b.vehiclePlate, b.fuel,
+    b.amount || '',
     b.driveLink || '',
     new Date(b.at).toLocaleDateString('en-IN')
   ]));
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [14,12,6,10,18,14,10,40,14].map(w => ({ wch: w }));
+  ws['!cols'] = [14,12,6,10,18,14,10,12,40,14].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Fuel Bills');
   XLSX.writeFile(wb, `FuelVault_${scope==='year' ? new Date().getFullYear() : 'All'}.xlsx`);
